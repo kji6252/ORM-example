@@ -1,0 +1,19 @@
+group 'net.zzong.ormtest'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+    compile ('org.projectlombok:lombok:1.16.14')
+    runtime('com.h2database:h2:1.4.193')
+    compile 'org.eclipse.persistence:javax.persistence:2.1.1'
+}
