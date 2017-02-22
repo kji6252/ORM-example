@@ -1,11 +1,7 @@
 package net.zzong.ormtest.persist;
 
-import lombok.Getter;
 
-import javax.persistence.Entity;
 import java.beans.PropertyDescriptor;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
@@ -15,64 +11,17 @@ import java.util.*;
  */
 public class EntityManager {
     Connection connection;
+    EntityManagerFactory entityManagerFactory;
 
-    @Getter
-    private Map<Class, EntityInformation<Class>> entityInfomationMap;
-
-    public EntityManager(String propertyName, List<Class> entytiList) {
-        this.connection = getConnection(propertyName);
-        this.entityInfomationMap = setEntityInfomationMap(entytiList);
-        init();
-    }
-    private Map<Class,EntityInformation<Class>> setEntityInfomationMap (List<Class> entytiList){
-        Map<Class,EntityInformation<Class>> entityInfomationMap = new HashMap<>();
-        if(entytiList==null || entytiList.size() <= 0) throw new RuntimeException("entytiList 값이 없다");
-        for (Class aClass : entytiList) {
-                entityInfomationMap.put(aClass, new EntityInformation(aClass));
-        }
-        return entityInfomationMap;
-    }
-
-    private Connection getConnection(String propertyName) {
-        Properties prop = new Properties();
-        Connection connection = null;
-        try {
-            prop.load(new FileInputStream(ClassLoader.getSystemResource(propertyName).getFile()));
-            Class.forName(prop.getProperty("driver"));
-            connection = DriverManager.getConnection(prop.getProperty("url")
-                    , prop.getProperty("user")
-                    , prop.getProperty("passwd"));
-            DriverManager.getConnection(prop.getProperty("url")
-                    ,prop.getProperty("user")
-                    ,prop.getProperty("passwd"));
-        } catch (IOException e ) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return connection;
-    }
-
-    private void init(){
-        //@Eneity의 이름에 있는 테이블명과 select문을 조합하여 쿼리를 보냄
-        try(Statement statement = connection.createStatement();) {
-            statement.execute("DROP TABLE USERS IF EXISTS");
-            statement.execute("CREATE TABLE USERS(id SERIAL, name VARCHAR(255), email VARCHAR(255), regdt DATE )");
-            statement.execute("INSERT INTO USERS (name, email, regdt) VALUES ('철수','cccc@naver.com',SYSDATE)");
-            statement.execute("INSERT INTO USERS (name, email, regdt) VALUES ('영희','cccc@naver.com',SYSDATE)");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
+    public EntityManager(Connection connection, EntityManagerFactory entityManagerFactory) {
+        this.connection = connection;
+        this.entityManagerFactory = entityManagerFactory;
     }
 
     public <T> List<T> findAll(Class<T> entityClass){
 
         List<T> entityObjects = new ArrayList<T>();
-        EntityInformation<T> entityInformation = (EntityInformation<T>) entityInfomationMap.get(entityClass);
+        EntityInformation<T> entityInformation = (EntityInformation<T>) this.entityManagerFactory.getEntityInfomationMap().get(entityClass);
 
 
         try (Statement statement = connection.createStatement()) {
@@ -108,7 +57,9 @@ public class EntityManager {
 
     public void close(){
         try {
+            entityManagerFactory.getEntityManagers().remove(this);
             connection.close();
+            System.out.println("자식 클로즈함");
         } catch (SQLException e) {
             e.printStackTrace();
         }
