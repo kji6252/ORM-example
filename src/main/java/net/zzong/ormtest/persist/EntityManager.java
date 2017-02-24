@@ -1,6 +1,10 @@
 package net.zzong.ormtest.persist;
 
 
+import lombok.Getter;
+import org.apache.commons.dbcp2.BasicDataSource;
+
+import javax.persistence.EntityTransaction;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
@@ -10,11 +14,14 @@ import java.util.*;
  * Created by 김종인 on 2017-02-21.
  */
 public class EntityManager {
-    Connection connection;
+    @Getter
+    BasicDataSource dataSource;
     EntityManagerFactory entityManagerFactory;
 
-    public EntityManager(Connection connection, EntityManagerFactory entityManagerFactory) {
-        this.connection = connection;
+    EntityTransaction entityTransaction;
+
+    public EntityManager(BasicDataSource dataSource, EntityManagerFactory entityManagerFactory) {
+        this.dataSource = dataSource;
         this.entityManagerFactory = entityManagerFactory;
     }
 
@@ -22,9 +29,10 @@ public class EntityManager {
 
         List<T> entityObjects = new ArrayList<T>();
         EntityInformation<T> entityInformation = (EntityInformation<T>) this.entityManagerFactory.getEntityInfomationMap().get(entityClass);
+        //connection.
 
 
-        try (Statement statement = connection.createStatement()) {
+        try (Statement statement = dataSource.getConnection().createStatement()) {
             try (ResultSet rs = statement.executeQuery("select * from " + entityInformation.getNativeTableName())) {
                 System.out.println("select * from " + entityInformation.getNativeTableName());
                 while (rs.next()) {
@@ -54,14 +62,19 @@ public class EntityManager {
         return entityObjects;
     }
 
+    public EntityTransaction getEntityTransaction() {
+            try {
+                if(entityTransaction==null)
+                    this.entityTransaction= new DefaultEntityTransaction(this.dataSource.getConnection(),this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        return this.entityTransaction;
+    }
+
 
     public void close(){
-        try {
-            entityManagerFactory.getEntityManagers().remove(this);
-            connection.close();
-            System.out.println("자식 클로즈함");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        entityManagerFactory.getEntityManagers().remove(this);
     }
 }
